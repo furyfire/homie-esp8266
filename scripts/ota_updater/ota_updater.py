@@ -5,6 +5,9 @@ import paho.mqtt.client as mqtt
 import base64, sys, math
 from hashlib import md5
 
+# Global variable for total bytes to transfer
+total = 0
+
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
     if rc != 0:
@@ -13,22 +16,25 @@ def on_connect(client, userdata, flags, rc):
     else:
         print("Connected with result code {}".format(rc))
 
-    # calcluate firmware md5
-    firmware_md5 = md5(userdata['firmware']).hexdigest()
-    userdata.update({'md5': firmware_md5})
+    client.subscribe("{base_topic}{device_id}/$state".format(**userdata))  # v3 / v4 devices
+    client.subscribe("{base_topic}{device_id}/$online".format(**userdata))  # v2 devices
 
-    # Subscribing in on_connect() means that if we lose the connection and
-    # reconnect then subscriptions will be renewed.
-    client.subscribe("{base_topic}{device_id}/$implementation/ota/status".format(**userdata))
-    client.subscribe("{base_topic}{device_id}/$implementation/ota/enabled".format(**userdata))
-    client.subscribe("{base_topic}{device_id}/$fw/#".format(**userdata))
 
-    # Wait for device info to come in and invoke the on_message callback where update will continue
-    print("Waiting for device info...")
+    print("Waiting for device to come online...")
 
+# Called from on_message to print a progress bar
+def on_progress(progress, total):
+    g_total = total
+    bar_width = 30
+    bar = int(bar_width*(progress/total))
+    print("\r[", '+'*bar, ' '*(bar_width-bar), "] ", progress, end='', sep='')
+    if (progress == total):
+        print()
+    sys.stdout.flush()
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
+    global total
     # decode string for python2/3 compatiblity
     msg.payload = msg.payload.decode()
 
@@ -36,21 +42,27 @@ def on_message(client, userdata, msg):
         status = int(msg.payload.split()[0])
 
         if userdata.get("published"):
-            if status == 206: # in progress
+            if status == 200:
+                on_progress(total, total)
+                print("Firmware uploaded successfully. Waiting for device to come back online.")
+                sys.stdout.flush()
+            elif status == 202:
+                print("Checksum accepted")
+            elif status == 206: # in progress
                 # state in progress, print progress bar
                 progress, total = [int(x) for x in msg.payload.split()[1].split('/')]
-                bar_width = 30
-                bar = int(bar_width*(progress/total))
-                print("\r[", '+'*bar, ' '*(bar_width-bar), "] ", msg.payload.split()[1], end='', sep='')
-                if (progress == total):
-                    print()
-                sys.stdout.flush()
+                on_progress(progress, total)
             elif status == 304: # not modified
                 print("Device firmware already up to date with md5 checksum: {}".format(userdata.get('md5')))
                 client.disconnect()
             elif status == 403: # forbidden
                 print("Device ota disabled, aborting...")
                 client.disconnect()
+            elif (status > 300) and (status < 500):
+                print("Other error '" + msg.payload + "', aborting...")
+                client.disconnect()
+            else:
+                print("Other error '" + msg.payload + "'")
 
     elif msg.topic.endswith('$fw/checksum'):
         checksum = msg.payload
@@ -75,6 +87,23 @@ def on_message(client, userdata, msg):
             print("Device ota disabled, aborting...")
             client.disconnect()
 
+    elif msg.topic.endswith('$state') or msg.topic.endswith('$online'):
+        if (msg.topic.endswith('$state') and msg.payload != 'ready') or (msg.topic.endswith('$online') and msg.payload == 'false'): 
+            return
+
+        # calcluate firmware md5
+        firmware_md5 = md5(userdata['firmware']).hexdigest()
+        userdata.update({'md5': firmware_md5})
+
+        # Subscribing in on_connect() means that if we lose the connection and
+        # reconnect then subscriptions will be renewed.
+        client.subscribe("{base_topic}{device_id}/$implementation/ota/status".format(**userdata))
+        client.subscribe("{base_topic}{device_id}/$implementation/ota/enabled".format(**userdata))
+        client.subscribe("{base_topic}{device_id}/$fw/#".format(**userdata))
+
+        # Wait for device info to come in and invoke the on_message callback where update will continue
+        print("Waiting for device info...")
+
     if ( not userdata.get("published") ) and ( userdata.get('ota_enabled') ) and \
        ( 'old_md5' in userdata.keys() ) and ( userdata.get('md5') != userdata.get('old_md5') ):
         # push the firmware binary
@@ -84,7 +113,7 @@ def on_message(client, userdata, msg):
         client.publish(topic, userdata['firmware'])
 
 
-def main(broker_host, broker_port, broker_username, broker_password, base_topic, device_id, firmware):
+def main(broker_host, broker_port, broker_username, broker_password, broker_ca_cert, base_topic, device_id, firmware):
     # initialise mqtt client and register callbacks
     client = mqtt.Client()
     client.on_connect = on_connect
@@ -93,6 +122,11 @@ def main(broker_host, broker_port, broker_username, broker_password, base_topic,
     # set username and password if given
     if broker_username and broker_password:
         client.username_pw_set(broker_username, broker_password)
+
+    if broker_ca_cert is not None:
+        client.tls_set(
+            ca_certs=broker_ca_cert
+        )
 
     # save data to be used in the callbacks
     client.user_data_set({
@@ -111,6 +145,8 @@ def main(broker_host, broker_port, broker_username, broker_password, base_topic,
 
 if __name__ == '__main__':
     import argparse
+
+    print (sys.argv[1:])
 
     parser = argparse.ArgumentParser(
         description='ota firmware update scirpt for ESP8226 implemenation of the Homie mqtt IoT convention.')
@@ -138,6 +174,10 @@ if __name__ == '__main__':
     parser.add_argument('firmware', type=argparse.FileType('rb'),
                         help='path to the firmware to be sent to the device')
 
+    parser.add_argument("--broker-tls-cacert", default=None, required=False,
+                        help="CA certificate bundle used to validate TLS connections. If set, TLS will be enabled on the broker conncetion"
+    )
+
     # workaround for http://bugs.python.org/issue9694
     parser._optionals.title = "arguments"
 
@@ -152,4 +192,4 @@ if __name__ == '__main__':
 
     # Invoke the business logic
     main(args.broker_host, args.broker_port, args.broker_username,
-         args.broker_password, args.base_topic, args.device_id, firmware)
+         args.broker_password, args.broker_tls_cacert, args.base_topic, args.device_id, firmware)

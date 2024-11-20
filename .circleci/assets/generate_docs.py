@@ -3,7 +3,7 @@
 
 import json
 import urllib
-import urllib2
+import urllib.request
 import tempfile
 import zipfile
 import glob
@@ -22,26 +22,28 @@ DOCS_BRANCHES = [
 ]
 CONFIGURATORS_PATH = 'configurators'
 CONFIGURATORS_VERSIONS = [
-  { 'title': 'v2', 'description': 'For Homie v2.x.x', 'path': 'v2', 'url': 'https://github.com/marvinroger/homie-esp8266-setup/raw/gh-pages/ui_bundle.html' },
+  { 'title': 'v2', 'description': 'For Homie v2.x.x', 'path': 'v2', 'url': 'https://github.com/homieiot/homie-esp8266-setup/raw/gh-pages/ui_bundle.html' },
   { 'title': 'v1', 'description': 'For Homie v1.x.x', 'path': 'v1', 'file': '/configurator_v1.html' }
 ]
 
 current_dir = os.path.dirname(__file__)
 output_dir = getopt.getopt(sys.argv[1:], 'o:')[0][0][1]
-github_releases = json.load(urllib2.urlopen('https://api.github.com/repos/marvinroger/homie-esp8266/releases'))
+github_releases = json.load(urllib.request.urlopen('https://api.github.com/repos/homieiot/homie-esp8266/releases'))
 
 def generate_docs(data):
   print('Generating docs for ' + data['tag'] + ' (' + data['description'] + ') at /' + data['path'] + '...')
-  zip_url = 'https://github.com/marvinroger/homie-esp8266/archive/' + data['tag'] + '.zip'
+  zip_url = 'https://github.com/homieiot/homie-esp8266/archive/' + data['tag'] + '.zip'
   zip_path = tempfile.mkstemp()[1]
-  urllib.urlretrieve(zip_url, zip_path)
+  urllib.request.urlretrieve(zip_url, zip_path)
 
   zip_file = zipfile.ZipFile(zip_path, 'r')
   unzip_path = tempfile.mkdtemp()
   zip_file.extractall(unzip_path)
   src_path = glob.glob(unzip_path + '/*')[0]
 
-  if not os.path.isfile(src_path + '/mkdocs.yml'): shutil.copy(current_dir + '/mkdocs.default.yml', src_path + '/mkdocs.yml')
+  # now do it always
+  # if not os.path.isfile(src_path + '/mkdocs.yml'):
+  shutil.copy(current_dir + '/mkdocs.default.yml', src_path + '/mkdocs.yml')
 
   subprocess.call(['mkdocs', 'build'], cwd=src_path)
   shutil.copytree(src_path + '/site', output_dir + '/' + DOCS_PATH + '/' + data['path'])
@@ -54,7 +56,7 @@ def generate_configurators(data):
     file_path = current_dir + data['file']
   else: # url
     file_path = tempfile.mkstemp()[1]
-    urllib.urlretrieve(data['url'], file_path)
+    urllib.request.urlretrieve(data['url'], file_path)
 
   prefix_output = output_dir + '/' + CONFIGURATORS_PATH + '/' + data['path']
   try:

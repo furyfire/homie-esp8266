@@ -98,6 +98,23 @@ template<>
 bool HomieSetting<const char*>::isConstChar() const { return true; }
 template<>
 const char* HomieSetting<const char*>::getType() const { return "string"; }
+template<>
+HomieSetting<const char*>& HomieSetting<const char*>::setDefaultValue(const char* defaultValue) {
+  //free any potentially prior set value
+  free(const_cast<char*>(_value));
+  //duplicate the value, so we own it, and might free when required
+  _value = strdup(defaultValue);;
+  _required = false;
+  return *this;
+}
+template<>
+void HomieSetting<const char*>::set(const char* value) {
+  //free any potentially prior set value (that was copied)
+  free(const_cast<char*>(_value));
+  //duplicate the value, so we own it, and might free when required
+  _value = strdup(value);
+  _required = false;
+}
 
 // Needed because otherwise undefined reference to
 template class HomieSetting<bool>;

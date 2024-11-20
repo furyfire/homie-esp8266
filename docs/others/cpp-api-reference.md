@@ -27,7 +27,10 @@ void Homie_setFirmware(const char* name, const char* version);
 // This is not a typo
 ```
 
-Set the name and version of the firmware. This is useful for OTA, as Homie will check against the server if there is a newer version.
+Set the name and version of the firmware.
+This is useful for OTA, as Homie will check against the server if there is a newer version.
+Be aware, that the function is implemented as a `define` macro.
+If you want to define the name or version outside the function call, you need to do so in the form of a `define` as well. 
 
 !!! warning "Mandatory!"
     You need to set the firmware for your sketch to work.
@@ -86,7 +89,7 @@ Set the configuration AP password.
 * **`password`**: the configuration AP password
 
 ```c++
-Homie& setGlobalInputHandler(std::function<bool(const String& nodeId, const String& property, const HomieRange& range, const String& value)> handler);
+Homie& setGlobalInputHandler(std::function<bool(const HomieNode& node, const HomieRange& range, const String& property, const String& value)> handler);
 ```
 
 Set input handler for subscribed properties.
@@ -176,7 +179,7 @@ void prepareToSleep();
 Prepare the device for deep sleep. It ensures messages are sent and disconnects cleanly from the MQTT broker, triggering a `READY_TO_SLEEP` event when done.
 
 ```c++
-void doDeepSleep(uint32_t time_us = 0, RFMode mode = RF_DEFAULT);
+void doDeepSleep(uint64_t time_us = 0, RFMode mode = RF_DEFAULT);
 ```
 
 Puth the device into deep sleep. It ensures the Serial is flushed.
@@ -219,7 +222,7 @@ Get the underlying `Logger` object, which is only a wrapper around `Serial` by d
 # HomieNode
 
 ```c++
-HomieNode(const char* id, const char* type, std::function<bool(const String& property, const HomieRange& range, const String& value)> handler = );
+HomieNode(const char* id, const char* name, const char* type, bool range, uint16_t lower, uint16_t upper, std::function<bool(const HomieRange& range, const String& property, const String& value)> handler);
 ```
 
 Constructor of an HomieNode object.
@@ -242,14 +245,11 @@ Return the type of the node.
 
 ```c++
 PropertyInterface& advertise(const char* property);
-PropertyInterface& advertiseRange(const char* property, uint16_t lower, uint16_t upper);
 ```
 
 Advertise a property / range property on the node.
 
 * **`property`**: Property to advertise
-* **`lower`**: Lower bound of the range
-* **`upper`**: Upper bound of the range
 
 This returns a reference to `PropertyInterface` on which you can call:
 
