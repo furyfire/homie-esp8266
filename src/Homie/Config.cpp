@@ -1,5 +1,4 @@
 #include "Config.hpp"
-
 using namespace HomieInternals;
 
 Config::Config()
@@ -11,9 +10,9 @@ Config::Config()
 bool Config::_spiffsBegin() {
   if (!_spiffsBegan) {
 #ifdef ESP32
-    _spiffsBegan = SPIFFS.begin(true);
+    _spiffsBegan = LittleFS.begin(true);
 #elif defined(ESP8266)
-    _spiffsBegan = SPIFFS.begin();
+    _spiffsBegan = LittleFS.begin();
 #endif
     if (!_spiffsBegan) Interface::get().getLogger() << F("✖ Cannot mount filesystem") << endl;
   }
@@ -26,12 +25,12 @@ bool Config::load() {
 
   _valid = false;
 
-  if (!SPIFFS.exists(CONFIG_FILE_PATH)) {
+  if (!LittleFS.exists(CONFIG_FILE_PATH)) {
     Interface::get().getLogger() << F("✖ ") << CONFIG_FILE_PATH << F(" doesn't exist") << endl;
     return false;
   }
 
-  File configFile = SPIFFS.open(CONFIG_FILE_PATH, "r");
+  File configFile = LittleFS.open(CONFIG_FILE_PATH, "r");
   if (!configFile) {
     Interface::get().getLogger() << F("✖ Cannot open config file") << endl;
     return false;
@@ -148,7 +147,7 @@ bool Config::load() {
 }
 
 char* Config::getSafeConfigFile() const {
-  File configFile = SPIFFS.open(CONFIG_FILE_PATH, "r");
+  File configFile = LittleFS.open(CONFIG_FILE_PATH, "r");
   size_t configSize = configFile.size();
 
   char buf[MAX_JSON_CONFIG_FILE_SIZE];
@@ -172,17 +171,17 @@ char* Config::getSafeConfigFile() const {
 void Config::erase() {
   if (!_spiffsBegin()) { return; }
 
-  SPIFFS.remove(CONFIG_FILE_PATH);
-  SPIFFS.remove(CONFIG_NEXT_BOOT_MODE_FILE_PATH);
+  LittleFS.remove(CONFIG_FILE_PATH);
+  LittleFS.remove(CONFIG_NEXT_BOOT_MODE_FILE_PATH);
 }
 
 void Config::setHomieBootModeOnNextBoot(HomieBootMode bootMode) {
   if (!_spiffsBegin()) { return; }
 
   if (bootMode == HomieBootMode::UNDEFINED) {
-    SPIFFS.remove(CONFIG_NEXT_BOOT_MODE_FILE_PATH);
+    LittleFS.remove(CONFIG_NEXT_BOOT_MODE_FILE_PATH);
   } else {
-    File bootModeFile = SPIFFS.open(CONFIG_NEXT_BOOT_MODE_FILE_PATH, "w");
+    File bootModeFile = LittleFS.open(CONFIG_NEXT_BOOT_MODE_FILE_PATH, "w");
     if (!bootModeFile) {
       Interface::get().getLogger() << F("✖ Cannot open NEXTMODE file") << endl;
       return;
@@ -197,7 +196,7 @@ void Config::setHomieBootModeOnNextBoot(HomieBootMode bootMode) {
 HomieBootMode Config::getHomieBootModeOnNextBoot() {
   if (!_spiffsBegin()) { return HomieBootMode::UNDEFINED; }
 
-  File bootModeFile = SPIFFS.open(CONFIG_NEXT_BOOT_MODE_FILE_PATH, "r");
+  File bootModeFile = LittleFS.open(CONFIG_NEXT_BOOT_MODE_FILE_PATH, "r");
   if (bootModeFile) {
     int v = bootModeFile.parseInt();
     bootModeFile.close();
@@ -210,9 +209,9 @@ HomieBootMode Config::getHomieBootModeOnNextBoot() {
 void Config::write(const JsonObject config) {
   if (!_spiffsBegin()) { return; }
 
-  SPIFFS.remove(CONFIG_FILE_PATH);
+  LittleFS.remove(CONFIG_FILE_PATH);
 
-  File configFile = SPIFFS.open(CONFIG_FILE_PATH, "w");
+  File configFile = LittleFS.open(CONFIG_FILE_PATH, "w");
   if (!configFile) {
     Interface::get().getLogger() << F("✖ Cannot open config file") << endl;
     return;
@@ -232,7 +231,7 @@ bool Config::patch(const char* patch) {
   }
 
   JsonObject patchObject = patchJsonDoc.as<JsonObject>();
-  File configFile = SPIFFS.open(CONFIG_FILE_PATH, "r");
+  File configFile = LittleFS.open(CONFIG_FILE_PATH, "r");
   if (!configFile) {
     Interface::get().getLogger() << F("✖ Cannot open config file") << endl;
     return false;
@@ -254,6 +253,7 @@ bool Config::patch(const char* patch) {
   ConfigValidationResult configValidationResult = Validation::validateConfig(configObject);
   if (!configValidationResult.valid) {
     Interface::get().getLogger() << F("✖ Config file is not valid, reason: ") << configValidationResult.reason << endl;
+    log();
     return false;
   }
 

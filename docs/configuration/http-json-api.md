@@ -226,7 +226,7 @@ Enable/disable the device to act as a transparent proxy between AP and Station n
 
     All requests that don't collide with existing API paths will be bridged to the destination according to the `Host` HTTP header. The destination host is called using the existing Wi-Fi connection (established after a `PUT /wifi/connect`) and all contents are bridged back to the connection made to the AP side.
 
-    This feature can be used to help captive portals to perform cloud API calls during device enrollment using the ESP8266 Wi-Fi AP connection without having to patch the Homie firmware. By using the transparent proxy, all operations can be performed by the custom JavaScript running on the browser (in SPIFFS location `/data/homie/ui_bundle.gz`).
+    This feature can be used to help captive portals to perform cloud API calls during device enrollment using the ESP8266 Wi-Fi AP connection without having to patch the Homie firmware. By using the transparent proxy, all operations can be performed by the custom JavaScript running on the browser (in LittleFS location `/data/homie/ui_bundle.gz`).
 
     HTTPS is not supported.
 

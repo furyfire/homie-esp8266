@@ -6,7 +6,7 @@ Adding functionality or features is useful to enable only partly implemented fea
 
 **HOMIE_CONFIG**
 
-This compiler flag allows to disable the configuration mode completely. To configure your homie-esp8266, you need to upload the configuration to the SPIFFS before starting the device. Without a proper configuration the device will just restart after writing the error message about the missing configuration to the logger. Add the following to your platformio.ini file:
+This compiler flag allows to disable the configuration mode completely. To configure your homie-esp8266, you need to upload the configuration to the LittleFS before starting the device. Without a proper configuration the device will just restart after writing the error message about the missing configuration to the logger. Add the following to your platformio.ini file:
 
 ```
 build_flags = -D HOMIE_CONFIG=0

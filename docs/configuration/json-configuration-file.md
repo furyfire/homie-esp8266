@@ -1,4 +1,4 @@
-To configure your device, you have two choices: manually flashing the configuration file to the SPIFFS at the `/homie/config.json` (see [Uploading files to file system](http://esp8266.github.io/Arduino/versions/2.3.0/doc/filesystem.html#uploading-files-to-file-system)), so you can bypass the `configuration` mode, or send it through the [HTTP JSON API](http-json-api.md).
+To configure your device, you have two choices: manually flashing the configuration file to the LittleFS at the `/homie/config.json` (see [Uploading files to file system](http://esp8266.github.io/Arduino/versions/2.3.0/doc/filesystem.html#uploading-files-to-file-system)), so you can bypass the `configuration` mode, or send it through the [HTTP JSON API](http-json-api.md).
 
 Below is the format of the JSON configuration you will have to provide:
 

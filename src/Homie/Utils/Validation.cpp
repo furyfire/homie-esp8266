@@ -56,16 +56,16 @@ ConfigValidationResult Validation::_validateConfigRoot(const JsonObject object) 
     }
   }
 
-  {
-    JsonVariant deviceStatsInterval = object["device_stats_interval"];
-
-    if (!deviceStatsInterval.isNull()) {
-      if (!deviceStatsInterval.is<uint16_t>()) {
-        result.reason = F("device_stats_interval is not an integer");
-        return result;
-      }
-    }
-  }
+//  {
+    //JsonVariant deviceStatsInterval = object["device_stats_interval"];
+//
+  //  if (!deviceStatsInterval.isNull()) {
+    //  if (!deviceStatsInterval.is<uint16_t>()) {
+      //  result.reason = F("device_stats_interval is not an integer");
+    //    return result;
+   //   }
+  //  }
+//  }
 
   result.valid = true;
   return result;
